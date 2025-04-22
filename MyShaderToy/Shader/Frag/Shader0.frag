@@ -43,30 +43,35 @@ float sdFlowerOfLife(vec2 p, float r, float t)
 
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
-    // Normalized pixel coordinates (from 0 to 1)
-    vec2 uv = (2.*fragCoord - iResolution.xy) /iResolution.y;
-    
-    float tr = iTime * 0.1;
-    
-    vec2 cs = vec2(cos(tr), sin(tr));
-    mat2 rot = mat2(vec2(cs.x, -cs.y), cs.yx);
-    
-    uv *= rot;
-    
-    float d0 = length(uv);
-    
-    vec3 mc = 0.5 + 0.5*cos(3.*d0-iTime*1.5+vec3(0,2,4));
-    
-    float t = cos(d0-iTime) * 0.5 + 0.5;
-    
-    float d = sdFlowerOfLife(uv, mix(0.25, 1.25, t), t);
-    
-    vec3 col = (d>0.0) ? vec3(1.) : vec3(1.);
-    col *= 1.0 - exp(-50.*abs(d));
-	col = mix( col, mc, 1.0-step(mix(0.01, 0.02, t), abs(d)) );
+    vec3 col = vec3(0.);
 
-    // Output to screen  
-    fragColor = vec4(col,1.0);
+    //Draw a red cross where the mouse button was last down.
+    if(abs(iMouse.x-fragCoord.x) < 4.) {
+        col = vec3(1.,0.,0.);
+    }
+    if(abs(iMouse.y-fragCoord.y) < 4.) {
+        col = vec3(1.,0.,0.);
+    }
+    
+    //If the button is currently up, (iMouse.z, iMouse.w) is where the mouse
+    //was when the button last went down.
+    if(abs(iMouse.z-fragCoord.x) < 2.) {
+        col = vec3(0.,0.,1.);
+    }
+    if(abs(iMouse.w-fragCoord.y) < 2.) {
+        col = vec3(0.,0.,1.);
+    }
+    
+    //If the button is currently down, (-iMouse.z, -iMouse.w) is where
+    //the button was when the click occurred.
+    if(abs(-iMouse.z-fragCoord.x) < 2.) {
+        col = vec3(0.,1.,0.);
+    }
+    if(abs(-iMouse.w-fragCoord.y) < 2.) {
+        col = vec3(0.,1.,0.);
+    }
+    
+    fragColor = vec4(col, 1.0);
 }
 
 void main() {

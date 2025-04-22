@@ -361,21 +361,24 @@ void VulkanCore::CreateGraphicPipeline()
     pipelineDynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
 
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(PushConstants);
+    if (m_GraphicPipelineLayout == VK_NULL_HANDLE)
+    {
+        VkPushConstantRange pushConstantRange{};
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = sizeof(PushConstants);
 
-    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutCreateInfo.pNext = NULL;
-    pipelineLayoutCreateInfo.flags = 0;
-    pipelineLayoutCreateInfo.setLayoutCount = 0;
-    pipelineLayoutCreateInfo.pSetLayouts = NULL;
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutCreateInfo.pNext = NULL;
+        pipelineLayoutCreateInfo.flags = 0;
+        pipelineLayoutCreateInfo.setLayoutCount = 0;
+        pipelineLayoutCreateInfo.pSetLayouts = NULL;
+        pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+        pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-    VK_CHECK(m_Disp.createPipelineLayout(&pipelineLayoutCreateInfo, NULL, &m_GraphicPipelineLayout));
+        VK_CHECK(m_Disp.createPipelineLayout(&pipelineLayoutCreateInfo, NULL, &m_GraphicPipelineLayout));
+    }
 
     const auto format = RT_IMAGE_FORMAT;
 
@@ -785,6 +788,15 @@ void VulkanCore::RecordCommandBuffer(uint32_t imageIndex, ImDrawData* imGui_draw
     VK_CHECK(m_Disp.endCommandBuffer(m_CommandBuffers[m_CurrentFrame]));
 }
 
+void VulkanCore::ReloadShader()
+{
+    m_Disp.deviceWaitIdle();
+
+    m_Disp.destroyPipeline(m_GraphicPipeline, nullptr);
+
+    CreateGraphicPipeline();
+}
+
 void VulkanCore::Draw()
 {
     m_Disp.waitForFences(1, &m_InFlightFences[m_CurrentFrame], VK_TRUE, UINT64_MAX);
@@ -822,9 +834,11 @@ void VulkanCore::Draw()
         ImGui::DockSpaceOverViewport();
     }
 
+    /*
     {
         m_ImGuiGlslEditor.Draw();
     }
+    */
 
     {
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs;
@@ -839,14 +853,19 @@ void VulkanCore::Draw()
 
             const char* buttonRestartText = "Restart";
             const char* buttonPlayText = m_Playing ? "Stop" : "Play";
+            const char* butttonRecompileText = "Recompile";
 
             ImGuiStyle& style = ImGui::GetStyle();
 
-            float buttonRestartY = ImGui::CalcTextSize(buttonRestartText).y + style.FramePadding.y * 2.0f + style.ItemSpacing.y;
-            float buttonStartSizeY = ImGui::CalcTextSize(buttonPlayText).y + style.FramePadding.y * 2.0f + style.ItemSpacing.y;
+            ImVec2 FramePadding = ImVec2(style.FramePadding.x * 2.0f, style.FramePadding.y * 2.0f);
+            float buttonRestartY = ImGui::CalcTextSize(buttonRestartText).y + FramePadding.y * 2.0f + style.ItemSpacing.y;
+            float buttonStartSizeY = ImGui::CalcTextSize(buttonPlayText).y + FramePadding.y * 2.0f + style.ItemSpacing.y;
             float textSizeY = ImGui::CalcTextSize(text.c_str()).y + style.ItemSpacing.y;
+            ImVec2 buttonRecompileSize = ImGui::CalcTextSize(butttonRecompileText);
+            buttonRecompileSize.x += FramePadding.x;
+            buttonRecompileSize.y += FramePadding.y + style.ItemSpacing.y;
 
-            ImageRegionAvail.y -= std::max(std::max(textSizeY, buttonStartSizeY), buttonRestartY);
+            ImageRegionAvail.y -= std::max(std::max(std::max(textSizeY, buttonStartSizeY), buttonRestartY), buttonRecompileSize.y);
 
             ImGui::BeginChild("Render", ImVec2(0, ImageRegionAvail.y), false, window_flags);
 
@@ -858,6 +877,7 @@ void VulkanCore::Draw()
                 RecreateRenderTarget(m_RTWidth, m_RTHeight);
             }
 
+            ImVec2 offset = ImGui::GetCursorPos();
             ImGui::Image(
                 (ImTextureID)m_ImGuiDescriptors[m_CurrentFrame],
                 ImageRegionAvail,
@@ -865,6 +885,22 @@ void VulkanCore::Draw()
                 ImVec2(1, 1),
                 ImVec4(1, 1, 1, 1)
             );
+
+            if (ImGui::IsAnyMouseDown())
+            {
+                ImVec2 MousePos = ImGui::GetMousePos();
+                m_CurrentMousePose = glm::vec2(MousePos.x - offset.x, ImageRegionAvail.y - (MousePos.y - offset.x));
+
+                if (!m_MouseDown)
+                {
+                    m_LastClickMousePose = m_CurrentMousePose;
+                    m_MouseDown = true;
+                }
+            }
+            else
+            {
+                m_MouseDown = false;
+            }
 
             ImGui::EndChild();
 
@@ -883,6 +919,12 @@ void VulkanCore::Draw()
             }
             ImGui::SameLine(0.0f, 30.0f);
             ImGui::Text(text.c_str());
+            ImGui::SameLine(ImageRegionAvail.x - buttonRecompileSize.x);
+            if (ImGui::Button(butttonRecompileText))
+            {
+                ReloadShader();
+                m_SimulationTime = 0.;
+            }
        
             ImGui::EndChild();
             
@@ -985,6 +1027,8 @@ void VulkanCore::GetPushConstant(PushConstants& pushConstant)
     pushConstant.iFrameRate = m_fps;
     pushConstant.iTime = static_cast<float>(m_SimulationTime);
     pushConstant.iTimeDelta = m_DeltaTime;
-    pushConstant.iMouse = glm::vec4(0.f);
+    pushConstant.iMouse = glm::vec4(m_CurrentMousePose, (m_MouseDown ? 1.f : -1.f) * m_LastClickMousePose.x, -m_LastClickMousePose.y);
     pushConstant.iDate = glm::vec4(0.f);
+
+    std::cout << pushConstant.iMouse.x << " " << pushConstant.iMouse.y  << " " << pushConstant.iMouse.z << " " << pushConstant.iMouse.w << "\n";
 }

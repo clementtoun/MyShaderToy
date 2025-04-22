@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-#define MAX_FRAMES_IN_FLIGHT 1
+#define MAX_FRAMES_IN_FLIGHT 3
 
 #define RT_IMAGE_FORMAT VK_FORMAT_R32G32B32A32_SFLOAT
 
@@ -103,6 +103,8 @@ public:
 
     void RecordCommandBuffer(uint32_t imageIndex, ImDrawData* imGui_draw_data);
 
+    void ReloadShader();
+
     void Draw();
 
     ~VulkanCore();
@@ -125,8 +127,8 @@ private:
 
     VmaAllocator m_Allocator;
 
-    VkPipelineLayout m_GraphicPipelineLayout;
-    VkPipeline m_GraphicPipeline;
+    VkPipelineLayout m_GraphicPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline m_GraphicPipeline = VK_NULL_HANDLE;
 
     vkb::Swapchain m_Swapchain;
     std::vector<VkImage> m_SwapchainImages;
@@ -142,7 +144,7 @@ private:
     uint32_t m_RTWidth, m_RTHeight = 1u;
 
     ImGuiIO* m_io;
-    VkDescriptorPool m_ImGuiDescriptorPool;
+    VkDescriptorPool m_ImGuiDescriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> m_ImGuiDescriptors;
     VkSampler m_ImGuiSampler;
 
@@ -154,6 +156,10 @@ private:
     std::chrono::steady_clock::time_point m_LastTime;
     bool m_Playing = true;
     double m_SimulationTime = 0;
+
+    glm::vec2 m_CurrentMousePose = glm::vec2(0.);
+    glm::vec2 m_LastClickMousePose = glm::vec2(0.);
+    bool m_MouseDown = false;
 
     ImGuiGlslEditor m_ImGuiGlslEditor;
 

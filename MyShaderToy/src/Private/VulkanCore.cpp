@@ -809,9 +809,11 @@ void VulkanCore::Draw()
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         RecreateSwapChain();
+        return;
     }
     else if (result != VK_SUCCESS) {
         std::cout << "Failed to acquire next image !" << '\n';
+        return;
     }
 
     VK_CHECK(m_Disp.resetCommandBuffer(m_CommandBuffers[m_CurrentFrame], 0));
@@ -822,12 +824,13 @@ void VulkanCore::Draw()
 
     if (m_Playing)
     {
-        m_DeltaTime = std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - m_LastTime).count();
-        m_LastTime = std::chrono::high_resolution_clock::now();
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        m_DeltaTime = std::chrono::duration<float>(currentTime - m_LastTime).count();
+        m_LastTime = currentTime;
         m_SimulationTime += m_DeltaTime;
 
-        const float alpha = 0.005;
-        m_fps = m_fps < 0. ? (1. / m_DeltaTime) : (1. / m_DeltaTime) * alpha + (1 - alpha) * m_fps;
+        const float alpha = 0.005f;
+        m_fps = m_fps < 0.f ? (1.f / m_DeltaTime) : (1.f / m_DeltaTime) * alpha + (1.f - alpha) * m_fps;
     }
 
     {
@@ -871,25 +874,28 @@ void VulkanCore::Draw()
 
             if (m_RTWidth != ImageRegionAvail.x || m_RTHeight != ImageRegionAvail.y)
             {
-                m_RTWidth = std::max(ImageRegionAvail.x, 1.f);
-                m_RTHeight = std::max(ImageRegionAvail.y, 1.f);
+                m_RTWidth = static_cast<uint32_t>(std::max(ImageRegionAvail.x, 1.f));
+                m_RTHeight = static_cast<uint32_t>(std::max(ImageRegionAvail.y, 1.f));
 
                 RecreateRenderTarget(m_RTWidth, m_RTHeight);
             }
 
-            ImVec2 offset = ImGui::GetCursorPos();
-            ImGui::Image(
+            ImVec2 offset = ImGui::GetCursorScreenPos();
+            ImGui::ImageButton(
                 (ImTextureID)m_ImGuiDescriptors[m_CurrentFrame],
                 ImageRegionAvail,
                 ImVec2(0, 0),
                 ImVec2(1, 1),
-                ImVec4(1, 1, 1, 1)
+                0
             );
 
-            if (ImGui::IsAnyMouseDown())
+            ImVec2 MousePos = ImGui::GetMousePos();
+
+            if (offset.x < MousePos.x && MousePos.x < offset.x + ImageRegionAvail.x && 
+                offset.y < MousePos.y && MousePos.y < offset.y + ImageRegionAvail.y && 
+                ImGui::IsAnyMouseDown())
             {
-                ImVec2 MousePos = ImGui::GetMousePos();
-                m_CurrentMousePose = glm::vec2(MousePos.x - offset.x, ImageRegionAvail.y - (MousePos.y - offset.x));
+                m_CurrentMousePose = glm::vec2(MousePos.x - offset.x, ImageRegionAvail.y - (MousePos.y - offset.y));
 
                 if (!m_MouseDown)
                 {
@@ -973,9 +979,11 @@ void VulkanCore::Draw()
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
         RecreateSwapChain();
+        return;
     }
     else if (result != VK_SUCCESS) {
         std::cout << "Failed to present image!" << '\n';
+        return;
     }
 
     m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -1029,6 +1037,4 @@ void VulkanCore::GetPushConstant(PushConstants& pushConstant)
     pushConstant.iTimeDelta = m_DeltaTime;
     pushConstant.iMouse = glm::vec4(m_CurrentMousePose, (m_MouseDown ? 1.f : -1.f) * m_LastClickMousePose.x, -m_LastClickMousePose.y);
     pushConstant.iDate = glm::vec4(0.f);
-
-    std::cout << pushConstant.iMouse.x << " " << pushConstant.iMouse.y  << " " << pushConstant.iMouse.z << " " << pushConstant.iMouse.w << "\n";
 }

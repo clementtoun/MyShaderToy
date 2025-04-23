@@ -14,7 +14,7 @@
 #include <vector>
 #include <iostream>
 
-#define MAX_FRAMES_IN_FLIGHT 3
+constexpr auto MAX_FRAMES_IN_FLIGHT = 3;
 
 #define RT_IMAGE_FORMAT VK_FORMAT_R32G32B32A32_SFLOAT
 
@@ -61,7 +61,7 @@ struct PushConstants {
     float iTime;              // 4 bytes
     float iTimeDelta;         // 4 bytes
     float iFrameRate;         // 4 bytes
-    int iFrame;               // 4 bytes
+    uint32_t iFrame;               // 4 bytes
     float padding0;           // 4 bytes (pour aligner les vec4 à 16 bytes)
     glm::vec4 iMouse;         // 16 bytes
     glm::vec4 iDate;          // 16 bytes
@@ -149,7 +149,7 @@ private:
     VkSampler m_ImGuiSampler;
 
     uint32_t m_CurrentFrame = 0;
-    uint64_t m_FrameCount = 0;
+    uint32_t m_FrameCount = 0;
 
     float m_fps = -1.;
     float m_DeltaTime = 0;

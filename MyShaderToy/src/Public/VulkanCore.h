@@ -10,9 +10,12 @@
 #include <glm/glm.hpp>
 #include "GlfwWindow.h"
 #include "ImGuiGlslEditor.h"
+#include "log.h"
 #include <chrono>
 #include <vector>
 #include <iostream>
+#define NOMINMAX
+#include <Windows.h>
 
 constexpr auto MAX_FRAMES_IN_FLIGHT = 3;
 
@@ -22,8 +25,43 @@ constexpr auto MAX_FRAMES_IN_FLIGHT = 3;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
+
+inline void CompileShaderCommand(const std::string& command)
+{
+    std::wstring cmd = L"cmd.exe /C " + std::wstring(command.begin(), command.end());
+
+    STARTUPINFOW si = { sizeof(STARTUPINFOW) };
+    PROCESS_INFORMATION pi;
+
+    // Important : buffer modifiable pour CreateProcessW
+    std::wstring mutable_cmd = cmd;
+
+    if (CreateProcessW(
+        NULL,
+        &mutable_cmd[0],
+        NULL, NULL, FALSE,
+        CREATE_NO_WINDOW, NULL, NULL,
+        &si, &pi))
+    {
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+    }
+    else
+    {
+        DWORD error = GetLastError();
+        std::wcerr << L"CreateProcessW failed with error code: " << error << std::endl;
+    }
+}
+
 #else
 constexpr bool enableValidationLayers = true;
+
+inline void CompileShaderCommand(const std::string& command)
+{
+    std::system(command.c_str());
+}
+
 #endif
 
 #define VK_CHECK(x)                                                 \
@@ -32,7 +70,7 @@ constexpr bool enableValidationLayers = true;
 		VkResult err = x;                                           \
 		if (err)                                                    \
 		{                                                           \
-			std::cout <<"Detected Vulkan error: " << err << std::endl; \
+			debug_log("Detected Vulkan error: " << err);            \
 			abort();                                                \
 		}                                                           \
 	} while (0)

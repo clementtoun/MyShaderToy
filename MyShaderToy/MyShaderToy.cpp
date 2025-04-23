@@ -1,8 +1,12 @@
 #define VMA_IMPLEMENTATION
 
 #include "VulkanApplication.h"
+#include "log.h"
+#include <windows.h>
 
-int main(int argc, char* argv[])
+#ifdef NDEBUG
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     try
     {
@@ -11,9 +15,31 @@ int main(int argc, char* argv[])
     }
     catch (std::exception& e)
     {
-        std::cout << e.what() << '\n';
+        MessageBoxA(NULL, e.what(), "Erreur", MB_ICONERROR | MB_OK);
         exit(-1);
     }
     
     return 0;
 }
+
+#else
+
+int main(int argc, char** argv)
+{
+    try
+    {
+        VulkanApplication VulkanApp("MyShaderToy", 0, "MyEngine", 0, 1080, 720);
+        VulkanApp.run();
+    }
+    catch (std::exception& e)
+    {
+        debug_log(e.what());
+        exit(-1);
+    }
+    
+    return 0;
+
+}
+
+
+#endif

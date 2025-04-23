@@ -52,7 +52,7 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
     mat2 rot = mat2(vec2(cs.x, -cs.y), cs.yx);
     
     uv *= rot;
-    
+
     float d0 = length(uv);
     
     vec3 mc = 0.5 + 0.5*cos(3.*d0-iTime*1.5+vec3(0,2,4));

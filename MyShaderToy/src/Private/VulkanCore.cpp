@@ -13,7 +13,7 @@ void VulkanCore::CreateDevice(const std::string& ApplicationName, uint32_t Appli
 {
     if (!m_Window)
     {
-        std::cout << "Window is not valid, cannot create VulkanInstance !\n";
+        debug_log("Window is not valid, cannot create VulkanInstance !");
         return;
     }
 
@@ -47,7 +47,7 @@ void VulkanCore::CreateDevice(const std::string& ApplicationName, uint32_t Appli
 
     auto instance_ret = instance_builder.build();
     if (!instance_ret) {
-        std::cout << instance_ret.error().message() << "\n";
+        debug_log(instance_ret.error().message());
     }
 
     m_Instance = instance_ret.value();
@@ -69,7 +69,7 @@ void VulkanCore::CreateDevice(const std::string& ApplicationName, uint32_t Appli
         .require_dedicated_transfer_queue()
         .select();
     if (!phys_device_ret) {
-        std::cout << phys_device_ret.error().message() << "\n";
+        debug_log(phys_device_ret.error().message());
     }
     vkb::PhysicalDevice physical_device = phys_device_ret.value();
 
@@ -78,7 +78,7 @@ void VulkanCore::CreateDevice(const std::string& ApplicationName, uint32_t Appli
     vkb::DeviceBuilder device_builder{ physical_device };
     auto device_ret = device_builder.build();
     if (!device_ret) {
-        std::cout << device_ret.error().message() << "\n";
+        debug_log(device_ret.error().message());
     }
     m_Device = device_ret.value();
 
@@ -104,7 +104,7 @@ void VulkanCore::CreateSwapChain()
         .set_desired_present_mode(PRESENT_MODE)
         .build();
     if (!swap_ret) {
-        std::cout << swap_ret.error().message() << " " << swap_ret.vk_result() << "\n";
+        debug_log(swap_ret.error().message() << " " << swap_ret.vk_result());
     }
     vkb::destroy_swapchain(m_Swapchain);
     m_Swapchain = swap_ret.value();
@@ -126,19 +126,19 @@ void VulkanCore::GetQueues()
 {
     auto gq = m_Device.get_queue(vkb::QueueType::graphics);
     if (!gq.has_value()) {
-        std::cout << "Failed to get graphics queue: " << gq.error().message() << "\n";
+        debug_log("Failed to get graphics queue: " << gq.error().message());
     }
     m_GraphicsQueue = gq.value();
 
     auto pq = m_Device.get_queue(vkb::QueueType::present);
     if (!pq.has_value()) {
-        std::cout << "failed to get present queue: " << pq.error().message() << "\n";
+        debug_log("failed to get present queue: " << pq.error().message());
     }
     m_PresentQueue = pq.value();
 
     auto tq = m_Device.get_dedicated_queue(vkb::QueueType::transfer);
     if (!tq.has_value()) {
-        std::cout << "Failed to get dedicated transfer queue: " << pq.error().message() << "\n";
+        debug_log("Failed to get dedicated transfer queue: " << pq.error().message());
 
     }
     m_TranferQueue = tq.value();
@@ -176,8 +176,9 @@ void VulkanCore::CompileShader(const std::string& spv_path)
     std::string shaderName = spv_path.substr(spv_path.find_last_of("\\"));
 
     std::string command = ".\\glslc.exe " + spv_path + " -o " + ".\\Shader\\Compiled_SPV\\" + shaderName + ".spv";
+    std::wstring wide_command(command.begin(), command.end());
 
-    std::system(command.c_str());
+    CompileShaderCommand(command);
 }
 
 VkShaderModule VulkanCore::createModule(const std::string& spv_path)
@@ -220,7 +221,7 @@ void VulkanCore::CreateGraphicPipeline()
 
     if (vertexShaderModule == VK_NULL_HANDLE || fragmentShaderModule == VK_NULL_HANDLE)
     {
-        std::cout << "Failed to create shaderModule !\n";
+        debug_log("Failed to create shaderModule !");
         return;
     }
 
@@ -481,7 +482,7 @@ void VulkanCore::CreateRenderTarget(uint32_t width, uint32_t height)
         allocCreateInfo.priority = 1.0f;
 
         if (vmaCreateImage(m_Allocator, &imageCreateInfo, &allocCreateInfo, &m_RTImages[i].Image, &m_RTImages[i].ImageAllocation, nullptr) != VK_SUCCESS) {
-            std::cout << "Image creation failed !" << std::endl;
+            debug_log("Image creation failed !");
         }
 
         VkImageViewCreateInfo viewInfo{};
@@ -812,7 +813,7 @@ void VulkanCore::Draw()
         return;
     }
     else if (result != VK_SUCCESS) {
-        std::cout << "Failed to acquire next image !" << '\n';
+        debug_log("Failed to acquire next image !");
         return;
     }
 
@@ -982,7 +983,7 @@ void VulkanCore::Draw()
         return;
     }
     else if (result != VK_SUCCESS) {
-        std::cout << "Failed to present image!" << '\n';
+        debug_log("Failed to present image!");
         return;
     }
 
